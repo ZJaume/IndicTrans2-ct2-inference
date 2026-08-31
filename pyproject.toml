@@ -1,0 +1,27 @@
+[project]
+name = "indictrans2-ct2-inference"
+description = "Fork of IndicTrans2 only for inference"
+version = "0.1"
+authors = [
+    {name = "Jaume Zaragoza", email = "jzaragoza@prompsit.com"}
+]
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "indic-nlp-library-itt==0.1.1",
+    "sacremoses==0.1.1",
+    "nltk==3.10.0",
+    "mosestokenizer==1.2.1",
+    "huggingface-hub<2,>1",
+    "ctranslate2",
+    "sentencepiece",
+]
+
+[build-system]
+requires = [
+    "setuptools<81",
+]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+indictrans2-inference = "indictrans2_ct2_inference.translate:main"
