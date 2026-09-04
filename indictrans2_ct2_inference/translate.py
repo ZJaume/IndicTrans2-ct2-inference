@@ -11,10 +11,6 @@ import tarfile
 import sys
 import os
 
-logger = logging.getLogger()
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger.info("Started")
-
 
 def open_file(filepath, mode):
     if filepath.suffix == ".zst":
@@ -58,9 +54,38 @@ def download_and_extract(src_lang):
     return str(model_path)
 
 
-def main():
+class Translator():
+    def __init__(self, src_lang, trg_lang, device_index, mini_batch_size, beam_size):
+        flores_reverse = {v:k for k,v in flores_codes.items()}
+        flores_reverse["bn"] = "ben_Beng"
+        flores_reverse["en"] = "eng_Latn"
+        flores_reverse["hi"] = "hin_Deva"
+        flores_reverse["or"] = "ory_Orya"
+        flores_reverse["ur"] = "urd_Arab"
+        if len(src_lang) < 3:
+            src_lang = flores_reverse[src_lang]
+        if len(trg_lang) < 3:
+            trg_lang = flores_reverse[trg_lang]
+
+        self.src_lang, self.trg_lang = src_lang, trg_lang
+        model_path = download_and_extract(src_lang)
+        self.model = Model(
+            model_path,
+            model_type="ctranslate2",
+            device_index=device_index,
+            mini_batch_size=mini_batch_size,
+            beam_size=beam_size,
+        )
+
+    def batch_translate(self, batch, src_lang = None, trg_lang = None):
+        return self.model.batch_translate(
+            batch,
+            src_lang if src_lang else self.src_lang,
+            trg_lang if trg_lang else self.trg_lang,
+        )
+
+def process_args():
     parser = ArgumentParser()
-    # parser.add_argument("model_dir", default=".")
     parser.add_argument("src_lang")
     parser.add_argument("trg_lang")
     parser.add_argument("--gpus", type=str)
@@ -82,24 +107,23 @@ def main():
     else:
         args.output = sys.stdout
 
-    flores_reverse = {v:k for k,v in flores_codes.items()}
-    flores_reverse["bn"] = "ben_Beng"
-    flores_reverse["en"] = "eng_Latn"
-    flores_reverse["hi"] = "hin_Deva"
-    flores_reverse["or"] = "ory_Orya"
-    flores_reverse["ur"] = "urd_Arab"
-    if len(args.src_lang) < 3:
-        args.src_lang = flores_reverse[args.src_lang]
-    if len(args.trg_lang) < 3:
-        args.trg_lang = flores_reverse[args.trg_lang]
+    return args
 
-    logging.info(f"Requested languages: {args.src_lang} {args.trg_lang}")
-    model_path = download_and_extract(args.src_lang)
-    model = Model(model_path,
-                  model_type="ctranslate2",
-                  device_index=args.gpus,
-                  mini_batch_size=args.mini_batch,
-                  beam_size=args.beam_size)
+
+def main():
+    args = process_args()
+    logger = logging.getLogger()
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger.info("Started")
+
+    model = Translator(
+        src_lang=args.src_lang,
+        trg_lang=args.trg_lang,
+        device_index=args.gpus,
+        mini_batch_size=args.mini_batch,
+        beam_size=args.beam_size
+    )
+    logging.info(f"Requested languages: {model.src_lang} {model.trg_lang}")
 
     def batched(stream):
         batch = []
