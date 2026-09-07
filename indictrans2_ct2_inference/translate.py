@@ -59,7 +59,15 @@ def download_and_extract(src_lang):
 
 
 class Translator():
-    def __init__(self, src_lang, trg_lang, device_index, mini_batch_size, beam_size):
+    def __init__(
+        self,
+        src_lang,
+        trg_lang,
+        device: str = "cuda",
+        device_index: list = [0],
+        mini_batch_size: int = 4000,
+        beam_size: int = 4,
+    ):
         flores_reverse = {v:k for k,v in flores_codes.items()}
         flores_reverse["bn"] = "ben_Beng"
         flores_reverse["en"] = "eng_Latn"
@@ -76,6 +84,7 @@ class Translator():
         self.model = Model(
             model_path,
             model_type="ctranslate2",
+            device=device,
             device_index=device_index,
             mini_batch_size=mini_batch_size,
             beam_size=beam_size,
