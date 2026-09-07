@@ -53,7 +53,7 @@ class TestBatchTranslate(unittest.TestCase):
             "EXPECTED_TRANSLATIONS must contain exactly 10 translations."
         )
 
-        outputs = self.translator.batch_translate(self.INPUT_SENTENCES)
+        outputs = self.translator.batch_translate(self.INPUT_SENTENCES, num_hypotheses=4)
 
         self.assertEqual(
             len(outputs), 10,
@@ -62,7 +62,7 @@ class TestBatchTranslate(unittest.TestCase):
 
         for i, (actual, expected) in enumerate(zip(outputs, self.EXPECTED_TRANSLATIONS), start=1):
             with self.subTest(sentence_index=i):
-                self.assertEqual(actual, expected)
+                self.assertEqual(actual[0], expected)
 
 
 if __name__ == "__main__":

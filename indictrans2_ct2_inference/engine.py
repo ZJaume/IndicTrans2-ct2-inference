@@ -177,8 +177,8 @@ class Model:
         else:
             raise NotImplementedError(f"Unknown model_type: {model_type}")
 
-    def ctranslate2_translate_lines(self, lines: List[str]) -> List[str]:
-        tokenized_sents = [x.strip().split(" ") for x in lines]
+    def ctranslate2_translate_lines(self, lines: List[str], num_hypotheses: int = 1) -> List[str]:
+        tokenized_sents = [x.split(" ") for x in lines]
         translations = self.translator.translate_batch(
             tokenized_sents,
             max_batch_size=self.mini_batch_size,
@@ -186,9 +186,10 @@ class Model:
             max_input_length=255,
             max_decoding_length=255,
             beam_size=self.beam_size,
+            num_hypotheses=num_hypotheses,
         )
-        translations = [" ".join(x.hypotheses[0]) for x in translations]
-        return translations
+        detokenized = [self.sp_tgt.decode(i.hypotheses) for i in translations]
+        return detokenized
 
     def fairseq_translate_lines(self, lines: List[str]) -> List[str]:
         return self.translator.translate(lines)
@@ -249,7 +250,13 @@ class Model:
         return translated_paragraphs
 
     # translate a batch of sentences from src_lang to tgt_lang
-    def batch_translate(self, batch: List[str], src_lang: str, tgt_lang: str) -> List[str]:
+    def batch_translate(
+        self,
+        batch: List[str],
+        src_lang: str,
+        tgt_lang: str,
+        num_hypotheses: int = 1
+    ) -> List[str]:
         """
         Translates a batch of input sentences (including pre/post processing)
         from source language to target language.
@@ -271,8 +278,13 @@ class Model:
         preprocessed_sents, placeholder_entity_map_sents = self.preprocess_batch(
             batch, src_lang, tgt_lang
         )
-        translations = self.translate_lines(preprocessed_sents)
-        return self.postprocess(translations, placeholder_entity_map_sents, tgt_lang)
+        translations = self.translate_lines(preprocessed_sents, num_hypotheses)
+        assert len(translations) == len(batch)
+        output = []
+        for candidates, placeholders in zip(translations, placeholder_entity_map_sents):
+            output.append(self.postprocess(candidates, [placeholders]*len(candidates), tgt_lang))
+
+        return output
 
     # translate a paragraph from src_lang to tgt_lang
     def translate_paragraph(self, paragraph: str, src_lang: str, tgt_lang: str) -> str:
@@ -375,7 +387,7 @@ class Model:
                 ),
                 iso_lang,
                 "hi",
-            ).replace(" ् ", "्")
+            )#.replace(" ् ", "्")
         else:
             # we only need to transliterate for joint training
             processed_sent = " ".join(
@@ -434,11 +446,6 @@ class Model:
         lang_code, script_code = lang.split("_")
         # SPM decode
         for i in range(len(sents)):
-            # sent_tokens = sents[i].split(" ")
-            # sents[i] = self.sp_tgt.decode(sent_tokens)
-
-            sents[i] = sents[i].replace(" ", "").replace("▁", " ").strip()
-
             # Fixes for Perso-Arabic scripts
             # TODO: Move these normalizations inside indic-nlp-library
             if script_code in {"Arab", "Aran"}:

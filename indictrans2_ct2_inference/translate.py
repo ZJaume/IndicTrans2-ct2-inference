@@ -77,11 +77,12 @@ class Translator():
             beam_size=beam_size,
         )
 
-    def batch_translate(self, batch, src_lang = None, trg_lang = None):
+    def batch_translate(self, batch, num_hypotheses = 1, src_lang = None, trg_lang = None):
         return self.model.batch_translate(
             batch,
             src_lang if src_lang else self.src_lang,
             trg_lang if trg_lang else self.trg_lang,
+            num_hypotheses=num_hypotheses,
         )
 
 def process_args():
