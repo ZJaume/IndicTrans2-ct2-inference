@@ -12,6 +12,10 @@ import sys
 import os
 
 
+logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
 def open_file(filepath, mode):
     if filepath.suffix == ".zst":
         import zstandard
@@ -113,8 +117,6 @@ def process_args():
 
 def main():
     args = process_args()
-    logger = logging.getLogger()
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger.info("Started")
 
     model = Translator(
