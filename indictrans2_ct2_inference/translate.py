@@ -24,7 +24,7 @@ def open_file(filepath, mode):
         return open(filepath, mode=mode)
 
 
-def download_and_extract(src_lang):
+def download_and_extract(src_lang, device):
     filename_prefix = "{src}-{trg}-preprint.tar.gz"
     dirname = 'additional'
     if src_lang == "en" or src_lang == "eng_Latn":
@@ -45,7 +45,7 @@ def download_and_extract(src_lang):
 
     full_path_extract_dir = full_path.removesuffix('.tar.gz')
     full_path = Path(full_path)
-    model_type_folder = 'ct2_fp16_model'
+    model_type_folder = 'ct2_fp16_model' if device == "cuda" else "ct2_int8_model"
     model_path = Path(full_path_extract_dir) / Path(model_type_folder)
     if not model_path.exists():
         logger.info("Extracting model from tarfile")
@@ -80,7 +80,7 @@ class Translator():
             trg_lang = flores_reverse[trg_lang]
 
         self.src_lang, self.trg_lang = src_lang, trg_lang
-        model_path = download_and_extract(src_lang)
+        model_path = download_and_extract(src_lang, device)
         self.model = Model(
             model_path,
             model_type="ctranslate2",
@@ -110,7 +110,8 @@ def process_args():
     parser.add_argument("-m", "--mini_batch", type=int, default=8000, required=False)
     parser.add_argument("-b", "--beam_size", type=int, default=4, required=False)
     args = parser.parse_args()
-    args.gpus = [0] if not args.gpus else list(map(int, args.gpus.split()))
+    if args.gpus:
+        args.gpus = list(map(int, args.gpus.split()))
 
     if args.input:
         args.input = open_file(args.input, mode='rt')
@@ -131,7 +132,8 @@ def main():
     model = Translator(
         src_lang=args.src_lang,
         trg_lang=args.trg_lang,
-        device_index=args.gpus,
+        device="cuda" if args.gpus else "cpu",
+        device_index=args.gpus if args.gpus else [0],
         mini_batch_size=args.mini_batch,
         beam_size=args.beam_size
     )
@@ -154,14 +156,15 @@ def main():
     total_bytes = 0
     line_number = 0
     for batch in batched(args.input):
-        translated_batch = model.batch_translate(batch, args.src_lang, args.trg_lang)
+        translated_batch = model.batch_translate(batch)
         assert len(translated_batch) == len(batch), f"{len(translated_batch)},{len(batch)}"
 
-        for line in translated_batch:
+        for hyps in translated_batch:
             if args.nbest:
-                print(f"{line_number} ||| {line.strip()}", file=args.output)
+                for h in hyps:
+                    print(f"{line_number} ||| {h.strip()}", file=args.output)
             else:
-                print(line.strip(), file=args.output)
+                print(hyps[0].strip(), file=args.output)
             line_number += 1
 
         total_sents += len(batch)
