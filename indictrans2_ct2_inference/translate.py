@@ -110,7 +110,7 @@ def process_args():
     parser.add_argument("-m", "--mini_batch", type=int, default=8000, required=False)
     parser.add_argument("-b", "--beam_size", type=int, default=4, required=False)
     args = parser.parse_args()
-    args.gpus = list(map(int, args.gpus.split()))
+    args.gpus = [0] if not args.gpus else list(map(int, args.gpus.split()))
 
     if args.input:
         args.input = open_file(args.input, mode='rt')
