@@ -1,5 +1,5 @@
 # IndicTrans2-ct2-inference
-Fork of IndicTrans2 that removes all the bloat and provides easy to use Ctranslate2 inference.
+Fork of [IndicTrans2](https://github.com/AI4Bharat/IndicTrans2) that removes all the bloat and provides easy to use Ctranslate2 inference.
 
 ## Installation
 ```
